@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>每日記帳與本月統計</title>
+
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --card: #fffdf9;
+      --text: #26312c;
+      --muted: #78817b;
+      --line: #e5e0d7;
+      --green: #568d6d;
+      --green-soft: #e3f0e7;
+      --orange: #d98251;
+      --orange-soft: #f9e8dc;
+      --red: #c66059;
+      --blue: #759ab7;
+      --shadow: 0 8px 24px rgba(50, 45, 35, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Noto Sans TC",
+        "PingFang TC",
+        "Microsoft JhengHei",
+        sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(100%, 1100px);
+      margin: 0 auto;
+      padding: 24px 16px 50px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+
+    .eyebrow {
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 7vw, 42px);
+      letter-spacing: -0.05em;
+    }
+
+    .month-picker {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .month-picker button {
+      width: 31px;
+      height: 31px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 23px;
+      line-height: 1;
+    }
+
+    .month-picker button:hover {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .month-label {
+      min-width: 94px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 11px;
+      margin-bottom: 18px;
+    }
+
+    .summary-card {
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .summary-card.balance {
+      background: var(--text);
+      color: white;
+      border-color: var(--text);
+    }
+
+    .summary-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .balance .summary-label {
+      color: #d0dcd4;
+    }
+
+    .summary-value {
+      display: block;
+      font-size: 26px;
+      font-weight: 900;
+    }
+
+    .income {
+      color: var(--green);
+    }
+
+    .expense {
+      color: var(--orange);
+    }
+
+    .balance .summary-value {
+      color: white;
+    }
+
+    .summary-note {
+      display: inline-block;
+      margin-top: 9px;
+      padding: 5px 9px;
+      border-radius: 99px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .balance .summary-note {
+      background: rgba(227, 240, 231, 0.14);
+      color: #bfe0c8;
+    }
+
+    .panel {
+      margin-bottom: 18px;
+      padding: 19px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      margin-bottom: 17px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 19px;
+    }
+
+    .panel-description {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .status-box {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding: 15px;
+      border-radius: 15px;
+      background: var(--green-soft);
+      color: #416950;
+    }
+
+    .status-box.warning {
+      background: var(--orange-soft);
+      color: #95542f;
+    }
+
+    .status-icon {
+      display: grid;
+      flex: 0 0 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 10px;
+      background: white;
+      font-size: 19px;
+    }
+
+    .status-title {
+      margin: 0 0 4px;
+      font-weight: 900;
+    }
+
+    .status-text {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .donut-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      min-height: 220px;
+    }
+
+    .donut {
+      position: relative;
+      width: 155px;
+      height: 155px;
+      flex: 0 0 155px;
+      border-radius: 50%;
+      background: #dedbd3;
+    }
+
+    .donut::after {
+      content: "";
+      position: absolute;
+      inset: 32px;
+      border-radius: 50%;
+      background: var(--card);
+    }
+
+    .donut-center {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      text-align: center;
+    }
+
+    .donut-center strong {
+      font-size: 20px;
+    }
+
+    .donut-center span {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .legend {
+      display: grid;
+      gap: 14px;
+      min-width: 135px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 10px 1fr auto;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-label {
+      color: var(--muted);
+    }
+
+    .legend-value {
+      font-weight: 900;
+    }
+
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 220px;
+      padding: 20px 3px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .bar-column {
+      display: flex;
+      flex: 1;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 7px;
+      min-width: 24px;
+    }
+
+    .bar-value {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .bar {
+      width: min(31px, 80%);
+      min-height: 5px;
+      border-radius: 7px 7px 2px 2px;
+      background: var(--orange);
+    }
+
+    .income-bar {
+      background: var(--green);
+    }
+
+    .bar-label {
+      color: var(--muted);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .type-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-bottom: 18px;
+    }
+
+    .type-switch label {
+      position: relative;
+    }
+
+    .type-switch input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .type-switch span {
+      display: grid;
+      min-height: 50px;
+      place-items: center;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .type-switch input:checked + span {
+      border-color: var(--orange);
+      background: var(--orange-soft);
+      color: var(--orange);
+    }
+
+    .type-switch label:first-child input:checked + span {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 13px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 48px;
+      padding: 10px 12px;
+      border: 2px solid var(--line);
+      border-radius: 11px;
+      outline: none;
+      background: white;
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(84, 141, 109, 0.12);
+    }
+
+    .submit-button {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 3px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--orange);
+      color: white;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .submit-button.income-button {
+      background: var(--green);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #faf7f1;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    th:first-child,
+    td:first-child,
+    th:nth-child(2),
+    td:nth-child(2) {
+      text-align: left;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .total-row td {
+      background: #f7f3eb;
+      font-weight: 900;
+    }
+
+    .delete-button {
+      min-height: 30px;
+      padding: 5px 9px;
+      border: 1px solid #efcec8;
+      border-radius: 8px;
+      background: #fff7f5;
+      color: var(--red);
+      font-size: 12px;
+    }
+
+    .empty-state {
+      padding: 28px 14px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    .hint {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (min-width: 640px) {
+      .app {
+        padding: 35px 24px 65px;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .chart-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .field.full,
+      .submit-button.full {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .header {
+        flex-direction: column;
+      }
+
+      .month-picker {
+        align-self: stretch;
+        justify-content: space-between;
+      }
+
+      .donut-area {
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .legend {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <p class="eyebrow">收支管理 · 月度分析</p>
+        <h1>本月統計</h1>
+      </div>
+
+      <div class="month-picker">
+        <button id="prevMonth" type="button" aria-label="上一個月">‹</button>
+        <span id="monthLabel" class="month-label"></span>
+        <button id="nextMonth" type="button" aria-label="下一個月">›</button>
+      </div>
+    </header>
+
+    <section class="summary-grid">
+      <article class="summary-card">
+        <span class="summary-label">本月總收入</span>
+        <strong id="monthIncome" class="summary-value income">$0</strong>
+        <span class="summary-note">全部收入合計</span>
+      </article>
+
+      <article class="summary-card">
+        <span class="summary-label">本月總支出</span>
+        <strong id="monthExpense" class="summary-value expense">$0</strong>
+        <span class="summary-note">全部支出合計</span>
+      </article>
+
+      <article class="summary-card balance">
+        <span class="summary-label">本月結餘</span>
+        <strong id="monthBalance" class="summary-value">$0</strong>
+        <span id="savingRate" class="summary-note">儲蓄率 0%</span>
+      </article>
+    </section>
+
+    <section id="statusBox" class="status-box">
+      <div id="statusIcon" class="status-icon">i</div>
+      <div>
+        <p id="statusTitle" class="status-title">目前尚無本月資料</p>
+        <p id="statusText" class="status-text">
+          新增收入與支出後，這裡會顯示本月收支狀態分析。
+        </p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">本月分析圖表</h2>
+        <p class="panel-description">圖表會隨著記帳資料自動更新。</p>
+      </div>
+
+      <div class="chart-grid">
+        <div>
+          <h3 class="panel-title">收入／支出比例</h3>
+
+          <div class="donut-area">
+            <div id="donut" class="donut">
+              <div class="donut-center">
+                <strong id="donutTotal">$0</strong>
+                <span>本月流量</span>
+              </div>
+            </div>
+
+            <div class="legend">
+              <div class="legend-item">
+                <span class="legend-dot" style="background: var(--green);"></span>
+                <span class="legend-label">收入</span>
+                <strong id="incomePercent" class="legend-value">0%</strong>
+              </div>
+
+              <div class="legend-item">
+                <span class="legend-dot" style="background: var(--orange);"></span>
+                <span class="legend-label">支出</span>
+                <strong id="expensePercent" class="legend-value">0%</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="panel-title">每日現金流</h3>
+          <div id="barChart" class="bar-chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">輸入本日收入／支出</h2>
+        <p id="selectedDateText" class="panel-description"></p>
+      </div>
+
+      <div class="type-switch">
+        <label>
+          <input id="incomeType" type="radio" name="type" value="income">
+          <span>＋ 本日收入</span>
+        </label>
+
+        <label>
+          <input id="expenseType" type="radio" name="type" value="expense" checked>
+          <span>− 本日支出</span>
+        </label>
+      </div>
+
+      <form id="recordForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="recordDate">日期</label>
+            <input id="recordDate" type="date" required>
+          </div>
+
+          <div class="field">
+            <label for="category">大類別</label>
+            <select id="category" required></select>
+          </div>
+
+          <div class="field">
+            <label for="item">項目名稱</label>
+            <input id="item" type="text" placeholder="例如：午餐、水電費" required>
+          </div>
+
+          <div class="field">
+            <label for="amount">金額</label>
+            <input id="amount" type="number" min="1" step="1" placeholder="請輸入金額" required>
+          </div>
+
+          <div class="field full">
+            <label for="note">備註（選填）</label>
+            <input id="note" type="text" placeholder="例如：現金、信用卡、轉帳">
+          </div>
+
+          <button id="submitButton" class="submit-button full" type="submit">
+            新增本日支出
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">本月每日數字統計</h2>
+        <p class="panel-description">查看每日收入、支出、結餘與累計結餘。</p>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>收入</th>
+              <th>支出</th>
+              <th>當日結餘</th>
+              <th>累計結餘</th>
+            </tr>
+          </thead>
+          <tbody id="monthTableBody"></tbody>
+        </table>
+      </div>
+
+      <p class="hint">手機畫面可左右滑動查看完整表格。</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">本日明細</h2>
+        <p class="panel-description">查看目前選定日期的記帳紀錄。</p>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>時間</th>
+              <th>項目</th>
+              <th>類型</th>
+              <th>大類別</th>
+              <th>金額</th>
+              <th>備註</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="dayTableBody"></tbody>
+        </table>
+      </div>
+
+      <p class="hint">手機畫面可左右滑動查看完整表格。</p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "accounting-records-no-raw-code";
+
+      const monthLabel = document.getElementById("monthLabel");
+      const prevMonth = document.getElementById("prevMonth");
+      const nextMonth = document.getElementById("nextMonth");
+
+      const monthIncome = document.getElementById("monthIncome");
+      const monthExpense = document.getElementById("monthExpense");
+      const monthBalance = document.getElementById("monthBalance");
+      const savingRate = document.getElementById("savingRate");
+
+      const statusBox = document.getElementById("statusBox");
+      const statusIcon = document.getElementById("statusIcon");
+      const statusTitle = document.getElementById("statusTitle");
+      const statusText = document.getElementById("statusText");
+
+      const donut = document.getElementById("donut");
+      const donutTotal = document.getElementById("donutTotal");
+      const incomePercent = document.getElementById("incomePercent");
+      const expensePercent = document.getElementById("expensePercent");
+      const barChart = document.getElementById("barChart");
+
+      const incomeType = document.getElementById("incomeType");
+      const expenseType = document.getElementById("expenseType");
+      const recordForm = document.getElementById("recordForm");
+      const recordDate = document.getElementById("recordDate");
+      const category = document.getElementById("category");
+      const item = document.getElementById("item");
+      const amount = document.getElementById("amount");
+      const note = document.getElementById("note");
+      const submitButton = document.getElementById("submitButton");
+
+      const selectedDateText = document.getElementById("selectedDateText");
+      const monthTableBody = document.getElementById("monthTableBody");
+      const dayTableBody = document.getElementById("dayTableBody");
+
+      const expenseCategories = [
+        "固定支出",
+        "生活機動支出",
+        "資產配置",
+        "其他支出"
+      ];
+
+      const incomeCategories = [
+        "薪資收入",
+        "獎金收入",
+        "兼職收入",
+        "投資收入",
+        "其他收入"
+      ];
+
+      let records = loadRecords();
+      let selectedMonth = new Date();
+      let selectedDay = getDateKey(new Date());
+
+      function loadRecords() {
+        try {
+          const value = localStorage.getItem(STORAGE_KEY);
+          if (!value) return [];
+
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveRecords() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      }
+
+      function pad(value) {
+        return String(value).padStart(2, "0");
+      }
+
+      function getDateKey(date) {
+        return (
+          date.getFullYear() +
+          "-" +
+          pad(date.getMonth() + 1) +
+          "-" +
+          pad(date.getDate())
+        );
+      }
+
+      function getMonthKey(date) {
+        return date.getFullYear() + "-" + pad(date.getMonth() + 1);
+      }
+
+      function formatMoney(value) {
+        const number = Math.abs(Number(value) || 0);
+        return "$" + number.toLocaleString("zh-TW");
+      }
+
+      function formatSignedMoney(value) {
+        const number = Number(value) || 0;
+
+        if (number > 0) {
+          return "＋" + formatMoney(number);
+        }
+
+        if (number < 0) {
+          return "−" + formatMoney(number);
+        }
+
+        return "$0";
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function formatDateText(dateKey) {
+        const date = new Date(dateKey + "T00:00:00");
+        const weekdays = [
+          "星期日",
+          "星期一",
+          "星期二",
+          "星期三",
+          "星期四",
+          "星期五",
+          "星期六"
+        ];
+
+        return (
+          date.getFullYear() +
+          " 年 " +
+          (date.getMonth() + 1) +
+          " 月 " +
+          date.getDate() +
+          " 日（" +
+          weekdays[date.getDay()] +
+          "）"
+        );
+      }
+
+      function updateMonthLabel() {
+        monthLabel.textContent =
+          selectedMonth.getFullYear() +
+          " 年 " +
+          (selectedMonth.getMonth() + 1) +
+          " 月";
+      }
+
+      function updateCategories() {
+        const type = incomeType.checked ? "income" : "expense";
+        const list = type === "income" ? incomeCategories : expenseCategories;
+
+        category.innerHTML = "";
+
+        list.forEach(function (value) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value;
+          category.appendChild(option);
+        });
+
+        if (type === "income") {
+          submitButton.textContent = "新增本日收入";
+          submitButton.classList.add("income-button");
+          item.placeholder = "例如：薪資、獎金、兼職收入";
+        } else {
+          submitButton.textContent = "新增本日支出";
+          submitButton.classList.remove("income-button");
+          item.placeholder = "例如：午餐、水電費、子女補習費";
+        }
+      }
+
+      function getMonthRecords() {
+        const monthKey = getMonthKey(selectedMonth);
+
+        return records
+          .filter(function (record) {
+            return String(record.date).slice(0, 7) === monthKey;
+          })
+          .sort(function (a, b) {
+            if (a.date !== b.date) {
+              return a.date.localeCompare(b.date);
+            }
+
+            return a.createdAt - b.createdAt;
+          });
+      }
+
+      function getDayRecords() {
+        return records
+          .filter(function (record) {
+            return record.date === selectedDay;
+          })
+          .sort(function (a, b) {
+            return a.createdAt - b.createdAt;
+          });
+      }
+
+      function calculateTotals(list) {
+        let income = 0;
+        let expense = 0;
+
+        list.forEach(function (record) {
+          if (record.type === "income") {
+            income += Number(record.amount) || 0;
+          } else {
+            expense += Number(record.amount) || 0;
+          }
+        });
+
+        return {
+          income: income,
+          expense: expense,
+          balance: income - expense
+        };
+      }
+
+      function renderSummary(monthRecords) {
+        const totals = calculateTotals(monthRecords);
+        const rate = totals.income > 0
+          ? (totals.balance / totals.income) * 100
+          : 0;
+
+        monthIncome.textContent = "＋" + formatMoney(totals.income);
+        monthExpense.textContent = "−" + formatMoney(totals.expense);
+        monthBalance.textContent = formatSignedMoney(totals.balance);
+        savingRate.textContent = "儲蓄率 " + rate.toFixed(1) + "%";
+
+        monthBalance.classList.remove("income");
+        monthBalance.classList.remove("expense");
+
+        if (totals.balance > 0) {
+          monthBalance.classList.add("income");
+        }
+
+        if (totals.balance < 0) {
+          monthBalance.classList.add("expense");
+        }
+
+        if (monthRecords.length === 0) {
+          statusBox.className = "status-box";
+          statusIcon.textContent = "i";
+          statusTitle.textContent = "目前尚無本月資料";
+          statusText.textContent =
+            "新增收入與支出後，這裡會顯示本月收支狀態分析。";
+        } else if (totals.balance > 0) {
+          statusBox.className = "status-box";
+          statusIcon.textContent = "✓";
+          statusTitle.textContent = "本月收支為正結餘";
+          statusText.textContent =
+            "目前收入高於支出 " +
+            formatMoney(totals.balance) +
+            "，財務狀態穩定。";
+        } else if (totals.balance < 0) {
+          statusBox.className = "status-box warning";
+          statusIcon.textContent = "!";
+          statusTitle.textContent = "本月支出高於收入";
+          statusText.textContent =
+            "目前支出超過收入 " +
+            formatMoney(Math.abs(totals.balance)) +
+            "，建議檢視支出項目。";
+        } else {
+          statusBox.className = "status-box warning";
+          statusIcon.textContent = "＝";
+          statusTitle.textContent = "本月收入與支出持平";
+          statusText.textContent = "本月收入與支出金額相同。";
+        }
+      }
+
+      function renderDonut(monthRecords) {
+        const totals = calculateTotals(monthRecords);
+        const total = totals.income + totals.expense;
+
+        donutTotal.textContent = formatMoney(total);
+
+        if (total === 0) {
+          donut.style.background = "#dedbd3";
+          incomePercent.textContent = "0%";
+          expensePercent.textContent = "0%";
+          return;
+        }
+
+        const incomeDegree = totals.income / total * 360;
+
+        donut.style.background =
+          "conic-gradient(var(--green) 0deg " +
+          incomeDegree +
+          "deg, var(--orange) " +
+          incomeDegree +
+          "deg 360deg)";
+
+        incomePercent.textContent =
+          Math.round(totals.income / total * 100) + "%";
+
+        expensePercent.textContent =
+          Math.round(totals.expense / total * 100) + "%";
+      }
+
+      function renderBarChart(monthRecords) {
+        barChart.innerHTML = "";
+
+        if (monthRecords.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty-state";
+          empty.textContent = "尚無每日資料";
+          barChart.appendChild(empty);
+          return;
+        }
+
+        const daily = {};
+
+        monthRecords.forEach(function (record) {
+          if (!daily[record.date]) {
+            daily[record.date] = {
+              income: 0,
+              expense: 0
+            };
+          }
+
+          if (record.type === "income") {
+            daily[record.date].income += Number(record.amount) || 0;
+          } else {
+            daily[record.date].expense += Number(record.amount) || 0;
+          }
+        });
+
+        let maximum = 1;
+
+        Object.keys(daily).forEach(function (dateKey) {
+          maximum = Math.max(
+            maximum,
+            daily[dateKey].income,
+            daily[dateKey].expense
+          );
+        });
+
+        Object.keys(daily).forEach(function (dateKey) {
+          const day = daily[dateKey];
+          const date = new Date(dateKey + "T00:00:00");
+
+          const column = document.createElement("div");
+          column.className = "bar-column";
+
+          const incomeBar = document.createElement("div");
+          incomeBar.className = "bar income-bar";
+          incomeBar.style.height =
+            Math.max(5, day.income / maximum * 130) + "px";
+          incomeBar.title = "收入 " + formatMoney(day.income);
+
+          const expenseBar = document.createElement("div");
+          expenseBar.className = "bar";
+          expenseBar.style.height =
+            Math.max(5, day.expense / maximum * 130) + "px";
+          expenseBar.title = "支出 " + formatMoney(day.expense);
+
+          const value = document.createElement("div");
+          value.className = "bar-value";
+          value.textContent = formatMoney(day.income + day.expense);
+
+          const label = document.createElement("div");
+          label.className = "bar-label";
+          label.textContent =
+            (date.getMonth() + 1) + "/" + date.getDate();
+
+          column.appendChild(value);
+          column.appendChild(incomeBar);
+          column.appendChild(expenseBar);
+          column.appendChild(label);
+          barChart.appendChild(column);
+        });
+      }
+
+      function renderMonthTable(monthRecords) {
+        monthTableBody.innerHTML = "";
+
+        if (monthRecords.length === 0) {
+          const row = document.createElement("tr");
+          row.innerHTML =
+            '<td colspan="5"><div class="empty-state">本月尚無紀錄，請先新增收入或支出。</div></td>';
+          monthTableBody.appendChild(row);
+          return;
+        }
+
+        const daily = {};
+
+        monthRecords.forEach(function (record) {
+          if (!daily[record.date]) {
+            daily[record.date] = {
+              income: 0,
+              expense: 0
+            };
+          }
+
+          if (record.type === "income") {
+            daily[record.date].income += Number(record.amount) || 0;
+          } else {
+            daily[record.date].expense += Number(record.amount) || 0;
+          }
+        });
+
+        let accumulated = 0;
+
+        Object.keys(daily).sort().forEach(function (dateKey) {
+          const day = daily[dateKey];
+          const dailyBalance = day.income - day.expense;
+          accumulated += dailyBalance;
+          const date = new Date(dateKey + "T00:00:00");
+
+          const row = document.createElement("tr");
+
+          row.innerHTML =
+            "<td>" +
+            (date.getMonth() + 1) +
+            "/" +
+            pad(date.getDate()) +
+            "</td>" +
+            '<td class="income">' +
+            (day.income > 0 ? "＋" + formatMoney(day.income) : "$0") +
+            "</td>" +
+            '<td class="expense">' +
+            (day.expense > 0 ? "−" + formatMoney(day.expense) : "$0") +
+            "</td>" +
+            '<td class="' +
+            (dailyBalance >= 0 ? "income" : "expense") +
+            '">' +
+            formatSignedMoney(dailyBalance) +
+            "</td>" +
+            '<td class="' +
+            (accumulated >= 0 ? "income" : "expense") +
+            '">' +
+            formatSignedMoney(accumulated) +
+            "</td>";
+
+          monthTableBody.appendChild(row);
+        });
+
+        const totals = calculateTotals(monthRecords);
+        const totalRow = document.createElement("tr");
+        totalRow.className = "total-row";
+
+        totalRow.innerHTML =
+          "<td>本月合計</td>" +
+          '<td class="income">＋' + formatMoney(totals.income) + "</td>" +
+          '<td class="expense">−' + formatMoney(totals.expense) + "</td>" +
+          '<td class="' +
+          (totals.balance >= 0 ? "income" : "expense") +
+          '">' +
+          formatSignedMoney(totals.balance) +
+          "</td>" +
+          '<td class="' +
+          (totals.balance >= 0 ? "income" : "expense") +
+          '">' +
+          formatSignedMoney(totals.balance) +
+          "</td>";
+
+        monthTableBody.appendChild(totalRow);
+      }
+
+      function renderDayTable(dayRecords) {
+        dayTableBody.innerHTML = "";
+
+        if (dayRecords.length === 0) {
+          const row = document.createElement("tr");
+          row.innerHTML =
+            '<td colspan="7"><div class="empty-state">選定日期尚無紀錄。</div></td>';
+          dayTableBody.appendChild(row);
+          return;
+        }
+
+        dayRecords.forEach(function (record) {
+          const row = document.createElement("tr");
+          const isIncome = record.type === "income";
+          const typeClass = isIncome ? "income" : "expense";
+          const typeText = isIncome ? "收入" : "支出";
+
+          const time = new Date(record.createdAt).toLocaleTimeString(
+            "zh-TW",
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          );
+
+          row.innerHTML =
+            "<td>" + time + "</td>" +
+            "<td>" + escapeHtml(record.item) + "</td>" +
+            '<td class="' + typeClass + '">' + typeText + "</td>" +
+            "<td>" + escapeHtml(record.category) + "</td>" +
+            '<td class="' + typeClass + '">' +
+            (isIncome ? "＋" : "−") +
+            formatMoney(record.amount) +
+            "</td>" +
+            "<td>" + escapeHtml(record.note || "—") + "</td>" +
+            '<td><button class="delete-button" type="button" data-id="' +
+            record.id +
+            '">刪除</button></td>';
+
+          dayTableBody.appendChild(row);
+        });
+
+        dayTableBody.querySelectorAll(".delete-button").forEach(function (button) {
+          button.addEventListener("click", function () {
+            records = records.filter(function (record) {
+              return record.id !== button.dataset.id;
+            });
+
+            saveRecords();
+            render();
+          });
+        });
+      }
+
+      function render() {
+        updateMonthLabel();
+
+        const monthRecords = getMonthRecords();
+        const dayRecords = getDayRecords();
+
+        selectedDateText.textContent = formatDateText(selectedDay);
+        recordDate.value = selectedDay;
+
+        renderSummary(monthRecords);
+        renderDonut(monthRecords);
+        renderBarChart(monthRecords);
+        renderMonthTable(monthRecords);
+        renderDayTable(dayRecords);
+      }
+
+      recordForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const numericAmount = Number(amount.value);
+        const type = incomeType.checked ? "income" : "expense";
+
+        if (!recordDate.value) {
+          alert("請選擇日期。");
+          return;
+        }
+
+        if (!category.value) {
+          alert("請選擇大類別。");
+          category.focus();
+          return;
+        }
+
+        if (!item.value.trim()) {
+          alert("請輸入項目名稱。");
+          item.focus();
+          return;
+        }
+
+        if (!numericAmount || numericAmount <= 0) {
+          alert("請輸入大於 0 的金額。");
+          amount.focus();
+          return;
+        }
+
+        selectedDay = recordDate.value;
+
+        records.push({
+          id: String(Date.now()) + "-" + Math.random(),
+          date: recordDate.value,
+          type: type,
+          category: category.value,
+          item: item.value.trim(),
+          amount: numericAmount,
+          note: note.value.trim(),
+          createdAt: Date.now()
+        });
+
+        saveRecords();
+
+        item.value = "";
+        amount.value = "";
+        note.value = "";
+        item.focus();
+
+        render();
+      });
+
+      incomeType.addEventListener("change", updateCategories);
+      expenseType.addEventListener("change", updateCategories);
+
+      recordDate.addEventListener("change", function () {
+        selectedDay = recordDate.value;
+
+        const date = new Date(selectedDay + "T00:00:00");
+        selectedMonth = new Date(
+          date.getFullYear(),
+          date.getMonth(),
+          1
+        );
+
+        render();
+      });
+
+      prevMonth.addEventListener("click", function () {
+        selectedMonth.setMonth(selectedMonth.getMonth() - 1);
+        selectedDay = getDateKey(
+          new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1)
+        );
+        render();
+      });
+
+      nextMonth.addEventListener("click", function () {
+        selectedMonth.setMonth(selectedMonth.getMonth() + 1);
+        selectedDay = getDateKey(
+          new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1)
+        );
+        render();
+      });
+
+      recordDate.value = selectedDay;
+      updateCategories();
+      render();
+    })();
+  </script>
+</body>
+</html>
